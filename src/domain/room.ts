@@ -1,16 +1,27 @@
 import WebSocket from "ws";
-import type { ServerMessage } from "../types";
+import type { RoomState, ServerMessage } from "../types";
 import type { Player } from "./player";
 
 export class Room {
   public players = new Map<string, Player>();
+  private state: RoomState = "WAITING";
+  private hostId: string | null = null;
 
   constructor(public id: string) {}
 
   addPlayer(player: Player) {
+    if (this.state !== "WAITING") {
+      throw new Error("Room is locked");
+    }
+
     if (this.players.has(player.id)) {
       throw new Error("Player already in room");
     }
+
+    if (this.players.size === 0) {
+      this.hostId = player.id;
+    }
+
     this.players.set(player.id, player);
     player.roomId = this.id;
 
@@ -18,12 +29,33 @@ export class Room {
   }
 
   removePlayer(player: Player) {
-    if (!this.players.has(player.id)) {
-      throw new Error("Player not in room");
-    }
+    if (!this.players.has(player.id))
+      return console.log(`Player ${player.username} deleted`);
 
     this.players.delete(player.id);
     player.roomId = null;
+
+    // attention futur bug si l'hote quitte la partie ça bloque toute la suite
+
+    this.notifyRoomUpdate();
+  }
+
+  startGame(player: Player) {
+    if (this.state !== "WAITING") {
+      throw new Error("Invalid state transition");
+    }
+
+    //uniquement l'hote peut lancer la partie
+    if (this.hostId !== player.id) {
+      throw new Error("Only host can start the game");
+    }
+
+    // sécurité pour eviter de lancer tout seul
+    if (this.players.size < 2) {
+      throw new Error("not enough players");
+    }
+
+    this.state = "PLAYING";
 
     this.notifyRoomUpdate();
   }
@@ -51,6 +83,9 @@ export class Room {
       type: "ROOM_UPDATE",
       payload: {
         players: this.getPlayersDTO(),
+        game: {
+          state: this.state,
+        },
       },
     });
   }

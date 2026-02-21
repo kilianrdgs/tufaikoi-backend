@@ -2,116 +2,43 @@ import type { RawData } from "ws";
 import type { Player } from "./domain/player";
 import type { RoomManager } from "./roomManager";
 import type { ClientMessage } from "./types";
-import generateRoomCode from "./utils/generateRoomCode";
 import sendServerMessage from "./utils/sendServerMessage";
+import handleCreateRoom from "./handlers/createRoom";
+import handleLeaveRoom from "./handlers/leaveRoom";
+import handleJoinRoom from "./handlers/joinRoom";
+import handleStartGame from "./handlers/startGame";
 
 export default function handleMessage(
-	raw: RawData,
-	player: Player,
-	roomManager: RoomManager,
+  raw: RawData,
+  player: Player,
+  roomManager: RoomManager
 ) {
-	let message: ClientMessage;
+  let message: ClientMessage;
 
-	try {
-		message = JSON.parse(raw.toString());
-	} catch {
-		return sendServerMessage(player.socket, {
-			type: "ERROR",
-			payload: { message: "Invalid JSON" },
-		});
-	}
+  try {
+    message = JSON.parse(raw.toString());
+  } catch {
+    return sendServerMessage(player.socket, {
+      type: "ERROR",
+      payload: { message: "Invalid JSON" },
+    });
+  }
 
-	switch (message.type) {
-		case "CREATE_ROOM": {
-			if (player.roomId) {
-				return sendServerMessage(player.socket, {
-					type: "ERROR",
-					payload: { message: "Already in a room" },
-				});
-			}
+  switch (message.type) {
+    case "CREATE_ROOM": {
+      return handleCreateRoom(message, player, roomManager);
+    }
 
-			const roomId = generateRoomCode();
-			const room = roomManager.createRoom(roomId); //création de l'objet room depuis roomManager
+    case "LEAVE_ROOM": {
+      return handleLeaveRoom(player, roomManager);
+    }
 
-			if (!room) {
-				return sendServerMessage(player.socket, {
-					type: "ERROR",
-					payload: { message: "Room creation failed" },
-				});
-			}
+    case "JOIN_ROOM": {
+      return handleJoinRoom(message, player, roomManager);
+    }
 
-			player.username = message.payload.username;
-
-			room.addPlayer(player); //ajout du joueur dans l'objet room
-
-			return sendServerMessage(player.socket, {
-				type: "ROOM_CREATED",
-				payload: { roomId, username: player.username },
-			});
-		}
-
-		case "LEAVE_ROOM": {
-			//verifie si le joueur est bien dans la room
-			if (!player.roomId) {
-				return sendServerMessage(player.socket, {
-					type: "ERROR",
-					payload: { message: "Not in a room" },
-				});
-			}
-
-			const room = roomManager.getRoom(player.roomId);
-
-			if (!room) {
-				return sendServerMessage(player.socket, {
-					type: "ERROR",
-					payload: { message: "Room not found" },
-				});
-			}
-
-			room.removePlayer(player); //supprime le joueur de la room
-
-			roomManager.removeRoomIfEmpty(room); //supprime la room si elle est vide
-
-			//message retour
-			return sendServerMessage(player.socket, {
-				type: "ROOM_LEFT",
-			});
-		}
-
-		case "JOIN_ROOM": {
-			//vérifie que le joueuer n'est pas deja dans une room
-			if (player.roomId) {
-				return sendServerMessage(player.socket, {
-					type: "ERROR",
-					payload: { message: "Already in a room" },
-				});
-			}
-
-			//vérifie que la room existe
-			const room = roomManager.getRoom(message.payload.roomId);
-
-			if (!room) {
-				return sendServerMessage(player.socket, {
-					type: "ERROR",
-					payload: { message: "Room does not exist" },
-				});
-			}
-
-			//mettre a jour le username
-			player.username = message.payload.username;
-
-			room.addPlayer(player);
-
-			//message retour
-			return sendServerMessage(player.socket, {
-				type: "ROOM_JOINED",
-				payload: {
-					roomId: room.id,
-					username: player.username,
-				},
-			});
-		}
-	}
+    case "START_GAME": {
+      return handleStartGame(player, roomManager);
+    }
+  }
 }
-
-// handleMessage(raw, player, roomManager);
