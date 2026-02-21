@@ -1,44 +1,49 @@
-import { Player } from "../domain/player";
-import { RoomManager } from "../roomManager";
-import { ClientMessage } from "../types";
+import type { Player } from "../domain/player";
+import type { RoomManager } from "../roomManager";
+import type { ClientMessage } from "../types";
 import sendServerMessage from "../utils/sendServerMessage";
 
-type StartGameMessage = Extract<ClientMessage, { type: "JOIN_ROOM" }>;
+type JoinRoomMessage = Extract<ClientMessage, { type: "JOIN_ROOM" }>;
 
 export default function handleJoinRoom(
-  message: StartGameMessage,
-  player: Player,
-  roomManager: RoomManager
+	message: JoinRoomMessage,
+	player: Player,
+	roomManager: RoomManager,
 ) {
-  //vérifie que le joueuer n'est pas deja dans une room
-  if (player.roomId) {
-    return sendServerMessage(player.socket, {
-      type: "ERROR",
-      payload: { message: "Already in a room" },
-    });
-  }
+	//vérifie que le joueuer n'est pas deja dans une room
+	if (player.roomId) {
+		return sendServerMessage(player.socket, {
+			type: "ERROR",
+			payload: { message: "Already in a room" },
+		});
+	}
 
-  //vérifie que la room existe
-  const room = roomManager.getRoom(message.payload.roomId);
+	//vérifie que la room existe
+	const room = roomManager.getRoom(message.payload.roomId);
 
-  if (!room) {
-    return sendServerMessage(player.socket, {
-      type: "ERROR",
-      payload: { message: "Room does not exist" },
-    });
-  }
+	if (!room) {
+		return sendServerMessage(player.socket, {
+			type: "ERROR",
+			payload: { message: "Room does not exist" },
+		});
+	}
 
-  //mettre a jour le username
-  player.username = message.payload.username;
+	//mettre a jour le username
+	player.username = message.payload.username;
 
-  room.addPlayer(player);
+	try {
+		room.addPlayer(player);
+	} catch (error) {
+		if (error instanceof Error) {
+			return sendServerMessage(player.socket, {
+				type: "ERROR",
+				payload: { message: error.message },
+			});
+		}
 
-  //message retour
-  return sendServerMessage(player.socket, {
-    type: "ROOM_JOINED",
-    payload: {
-      roomId: room.id,
-      username: player.username,
-    },
-  });
+		return sendServerMessage(player.socket, {
+			type: "ERROR",
+			payload: { message: "Unexpected error" },
+		});
+	}
 }
