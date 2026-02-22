@@ -5,7 +5,9 @@ export type ClientMessage =
 	| { type: "START_GAME" }
 
 	// message in game
-	| { type: "NEXT_PHASE" };
+	| { type: "NEXT_PHASE" }
+	| { type: "SUBMIT_ANSWER"; payload: { answer: string } }
+	| { type: "SUBMIT_VOTE"; payload: { answerIndex: number } };
 
 export type ServerMessage =
 	| {
@@ -34,4 +36,13 @@ export type GameDTO = {
 	currentRound: number;
 	maxRounds: number;
 	question: string | null;
+	answers: string[] | null;
+	results: RoundResult[] | null;
+};
+
+export type RoundResult = {
+	username: string;
+	answer: string;
+	votes: number;
+	isWinner: boolean;
 };

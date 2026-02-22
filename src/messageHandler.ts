@@ -3,6 +3,8 @@ import type { GameManager } from "./domain/gameManager";
 import type { Player } from "./domain/player";
 import type { RoomManager } from "./domain/roomManager";
 import handleNextPhase from "./handlers/game/nextPhase";
+import handleSubmitAnswer from "./handlers/game/submitAnswer";
+import handleSubmitVote from "./handlers/game/submitVote";
 import handleCreateRoom from "./handlers/room/createRoom";
 import handleJoinRoom from "./handlers/room/joinRoom";
 import handleLeaveRoom from "./handlers/room/leaveRoom";
@@ -54,6 +56,26 @@ export default function handleMessage(
 
 			case "NEXT_PHASE": {
 				return handleNextPhase(player, roomManager, gameManager, sockets);
+			}
+
+			case "SUBMIT_ANSWER": {
+				return handleSubmitAnswer(
+					player,
+					roomManager,
+					gameManager,
+					sockets,
+					message.payload.answer,
+				);
+			}
+
+			case "SUBMIT_VOTE": {
+				return handleSubmitVote(
+					player,
+					roomManager,
+					gameManager,
+					sockets,
+					message.payload.answerIndex,
+				);
 			}
 		}
 	} catch (error) {

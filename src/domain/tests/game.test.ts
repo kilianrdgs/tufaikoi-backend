@@ -13,6 +13,7 @@ describe("Game", () => {
 			expect(dto.currentRound).toBe(1);
 			expect(dto.maxRounds).toBe(3);
 			expect(dto.question).toBe("question");
+			expect(dto.answers).toBeNull();
 		});
 	});
 	describe("nextPhase", () => {
@@ -20,8 +21,10 @@ describe("Game", () => {
 			const game = new Game("1234", ["player1", "player2"], "question");
 
 			game.nextPhase();
+			const dto = game.getDTO();
 
-			expect(game.getDTO().phase).toBe("VOTING");
+			expect(dto.phase).toBe("VOTING");
+			expect(dto.answers).not.toBeNull();
 		});
 
 		it("Should transition from VOTING to RESULTS", () => {
@@ -75,6 +78,105 @@ describe("Game", () => {
 			}
 
 			expect(() => game.nextPhase()).toThrow("Game is already finished");
+		});
+	});
+
+	describe("submitAnswer", () => {
+		it("Should store a player's answer", () => {
+			const game = new Game("1234", ["player1", "player2"], "question");
+
+			game.submitAnswer("player1", "ma réponse");
+
+			expect(game.getAnswers().get("player1")).toBe("ma réponse");
+		});
+
+		it("Throw if not in ANSWERING phase", () => {
+			const game = new Game("1234", ["player1", "player2"], "question");
+
+			game.nextPhase(); // ANSWERING to VOTING
+
+			expect(() => game.submitAnswer("player1", "ma réponse")).toThrow(
+				"Not in answering phase",
+			);
+		});
+
+		it("Throw if player already submitted", () => {
+			const game = new Game("1234", ["player1", "player2"], "question");
+			game.submitAnswer("player1", "ma réponse");
+
+			expect(() => game.submitAnswer("player1", "ma réponse")).toThrow(
+				"Answer already submitted",
+			);
+		});
+
+		it("Should clear answers when moving to next round", () => {
+			const game = new Game("1234", ["player1", "player2"], "question");
+			game.submitAnswer("player1", "ma réponse");
+
+			game.nextPhase(); // ANSWERING to VOTING
+			game.nextPhase(); // VOTING to RESULTS
+			game.nextPhase(); // RESULTS ROUND 1 to ANSWERING ROUND 2
+
+			expect(game.getAnswers().size).toBe(0);
+		});
+	});
+
+	describe("submitVote", () => {
+		it("Should store a player's vote", () => {
+			const game = new Game("1234", ["player1", "player2"], "question");
+			game.submitAnswer("player1", "ma réponse");
+
+			game.nextPhase(); // ANSWERING to VOTING
+
+			game.submitVote("player2", 0);
+
+			expect(game.getVotes().get("player2")).toBe(0);
+		});
+
+		it("Throw if not in VOTING phase", () => {
+			const game = new Game("1234", ["player1", "player2"], "question");
+			game.submitAnswer("player1", "ma réponse");
+
+			expect(() => game.submitVote("player2", 0)).toThrow(
+				"Not in voting phase",
+			);
+		});
+
+		it("Throw if invalid answer index", () => {
+			const game = new Game("1234", ["player1", "player2"], "question");
+			game.submitAnswer("player1", "ma réponse");
+
+			game.nextPhase(); // ANSWERING to VOTING
+
+			expect(() => game.submitVote("player2", -1)).toThrow(
+				"Invalid answer index",
+			);
+		});
+
+		it("Throw if player already voted", () => {
+			const game = new Game("1234", ["player1", "player2"], "question");
+			game.submitAnswer("player1", "ma réponse");
+
+			game.nextPhase(); // ANSWERING to VOTING
+
+			game.submitVote("player2", 0);
+			expect(() => game.submitVote("player2", 0)).toThrow(
+				"Vote already submitted",
+			);
+		});
+
+		it("Should clear votes when moving to next round", () => {
+			const game = new Game("1234", ["player1", "player2"], "question");
+			game.submitAnswer("player1", "ma réponse");
+
+			game.nextPhase(); // ANSWERING to VOTING
+			game.submitVote("player2", 0);
+
+			game.nextPhase(); // VOTING to RESULTS
+
+			game.nextPhase(); // RESULTS ROUND 1 to ANSWERING ROUND 2
+
+			expect(game.getVotes().size).toBe(0);
 		});
 	});
 });
