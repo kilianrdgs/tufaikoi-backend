@@ -47,8 +47,9 @@ ws.on("connection", (socket) => {
 		if (player.roomId) {
 			const room = roomManager.getRoom(player.roomId);
 			if (room) {
+				const game = gameManager.getGame(room.id);
 				room.removePlayer(player);
-				broadcastRoomUpdate(room, sockets);
+				broadcastRoomUpdate(room, sockets, game);
 				if (room.isEmpty()) {
 					gameManager.removeGame(room.id);
 					roomManager.removeRoomIfEmpty(room);

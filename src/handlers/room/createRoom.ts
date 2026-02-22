@@ -1,10 +1,10 @@
 import type { WebSocket } from "ws";
-import type { Player } from "../domain/player";
-import type { RoomManager } from "../domain/roomManager";
-import type { ClientMessage } from "../types";
-import broadcastRoomUpdate from "../utils/broadcastRoomUpdate";
-import generateRoomCode from "../utils/generateRoomCode";
-import sendServerMessage from "../utils/sendServerMessage";
+import type { Player } from "../../domain/player";
+import type { RoomManager } from "../../domain/roomManager";
+import type { ClientMessage } from "../../types";
+import broadcastRoomUpdate from "../../utils/broadcastRoomUpdate";
+import generateRoomCode from "../../utils/generateRoomCode";
+import sendServerMessage from "../../utils/sendServerMessage";
 
 type CreateRoomMessage = Extract<ClientMessage, { type: "CREATE_ROOM" }>;
 

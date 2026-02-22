@@ -1,9 +1,9 @@
 import type { WebSocket } from "ws";
-import type { Player } from "../domain/player";
-import type { RoomManager } from "../domain/roomManager";
-import type { ClientMessage } from "../types";
-import broadcastRoomUpdate from "../utils/broadcastRoomUpdate";
-import sendServerMessage from "../utils/sendServerMessage";
+import type { Player } from "../../domain/player";
+import type { RoomManager } from "../../domain/roomManager";
+import type { ClientMessage } from "../../types";
+import broadcastRoomUpdate from "../../utils/broadcastRoomUpdate";
+import sendServerMessage from "../../utils/sendServerMessage";
 
 type JoinRoomMessage = Extract<ClientMessage, { type: "JOIN_ROOM" }>;
 
