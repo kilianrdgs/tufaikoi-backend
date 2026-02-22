@@ -7,6 +7,7 @@ import { Player } from "./domain/player";
 import { RoomManager } from "./domain/roomManager";
 import handleMessage from "./messageHandler";
 import broadcastRoomUpdate from "./utils/broadcastRoomUpdate";
+import { GameManager } from "./domain/gameManager";
 
 // ------------------------------ Server Setup ------------------------------
 const app = express();
@@ -18,49 +19,53 @@ const ws = new WebSocketServer({ server });
 
 // In-memory storage for rooms and player sockets
 const roomManager = new RoomManager();
+const gameManager = new GameManager();
 const sockets = new Map<string, WebSocket>();
 // ------------------------------------------------------------------
 
 // Handle new WebSocket connections
 ws.on("connection", (socket) => {
-	const player = new Player(crypto.randomUUID(), "usertest");
-	sockets.set(player.id, socket);
+  const player = new Player(crypto.randomUUID(), "usertest");
+  sockets.set(player.id, socket);
 
-	// Listen for incoming messages from the client
-	socket.on("message", (raw) => {
-		handleMessage(raw, player, roomManager, sockets);
-	});
-	// ------------------------------------------------------------------
+  // Listen for incoming messages from the client
+  socket.on("message", (raw) => {
+    handleMessage(raw, player, roomManager, gameManager, sockets);
+  });
+  // ------------------------------------------------------------------
 
-	// Handle socket errors and disconnections
-	socket.on("error", (error) => {
-		console.error(`Socket error for player ${player.id}:`, error.message);
-	});
-	// ------------------------------------------------------------------
+  // Handle socket errors and disconnections
+  socket.on("error", (error) => {
+    console.error(`Socket error for player ${player.id}:`, error.message);
+  });
+  // ------------------------------------------------------------------
 
-	// When a client disconnects, remove them from their room and clean up resources
-	socket.on("close", () => {
-		sockets.delete(player.id);
+  // When a client disconnects, remove them from their room and clean up resources
+  socket.on("close", () => {
+    sockets.delete(player.id);
 
-		if (player.roomId) {
-			const room = roomManager.getRoom(player.roomId);
-			if (room) {
-				room.removePlayer(player);
-				broadcastRoomUpdate(room, sockets);
-				roomManager.removeRoomIfEmpty(room);
-			}
-		}
-	});
-	// ------------------------------------------------------------------
+    if (player.roomId) {
+      const room = roomManager.getRoom(player.roomId);
+      if (room) {
+        room.removePlayer(player);
+        broadcastRoomUpdate(room, sockets);
+        if (room.isEmpty()) {
+          gameManager.removeGame(room.id);
+          roomManager.removeRoomIfEmpty(room);
+        }
+      }
+    }
+  });
+  // ------------------------------------------------------------------
 });
 
 // Basic HTTP route for testing
 app.get("/", (_req, res) => {
-	res.send("Hello, World!");
+  res.send("Hello, World!");
 });
 
 // Start the server
 server.listen(PORT, () => {
-	console.log(`---- Server is running on port: ${PORT} ----`);
+  console.log(`---- Server is running on port: ${PORT} ----`);
 });
 // ------------------------------------------------------------------
