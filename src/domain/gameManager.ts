@@ -3,7 +3,11 @@ import { Game } from "./game";
 export class GameManager {
 	private games = new Map<string, Game>();
 
-	createGame(roomId: string, players: string[], question: string): Game {
+	createGame(
+		roomId: string,
+		players: { id: string; username: string }[],
+		question: string,
+	): Game {
 		if (this.games.has(roomId)) {
 			throw new Error("Game already exists for this room");
 		}

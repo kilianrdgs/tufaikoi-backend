@@ -1,4 +1,4 @@
-import type { GamePhase, GameState } from "../types";
+import type { GamePhase, GameState, RoundResult } from "../types";
 
 export class Game {
 	private currentRound = 1;
@@ -11,7 +11,7 @@ export class Game {
 
 	constructor(
 		readonly roomId: string,
-		readonly players: string[],
+		readonly players: { id: string; username: string }[],
 		question: string,
 	) {
 		this.currentQuestion = question;
@@ -87,6 +87,30 @@ export class Game {
 	}
 
 	getDTO() {
+		let results: RoundResult[] | null = null;
+
+		if (this.phase === "RESULTS") {
+			const answersArray = [...this.answers.entries()];
+
+			const voteCounts = new Map<number, number>();
+			for (const answerIndex of this.votes.values()) {
+				voteCounts.set(answerIndex, (voteCounts.get(answerIndex) ?? 0) + 1);
+			}
+
+			const maxVotes = Math.max(...voteCounts.values(), 0);
+
+			results = answersArray.map(([playerId, answer], index) => {
+				const votes = voteCounts.get(index) ?? 0;
+				const player = this.players.find((p) => p.id === playerId);
+				return {
+					username: player?.username ?? "Unknown",
+					answer,
+					votes,
+					isWinner: votes === maxVotes && maxVotes > 0,
+				};
+			});
+		}
+
 		return {
 			state: this.state,
 			phase: this.phase,
@@ -94,6 +118,7 @@ export class Game {
 			maxRounds: this.maxRounds,
 			question: this.currentQuestion,
 			answers: this.phase === "VOTING" ? [...this.answers.values()] : null,
+			results,
 		};
 	}
 }

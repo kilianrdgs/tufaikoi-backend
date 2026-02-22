@@ -40,7 +40,10 @@ export default function handleStartGame(
 		});
 	}
 
-	const players = Array.from(room.getPlayers()).map((p) => p.id);
+	const players = Array.from(room.getPlayers()).map((p) => ({
+		id: p.id,
+		username: p.username,
+	}));
 
 	const game = gameManager.createGame(room.id, players, questions[0]);
 
