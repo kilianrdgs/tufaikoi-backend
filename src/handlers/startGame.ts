@@ -1,14 +1,19 @@
+import type { WebSocket } from "ws";
 import type { Player } from "../domain/player";
-import type { RoomManager } from "../roomManager";
+import type { RoomManager } from "../domain/roomManager";
+import broadcastRoomUpdate from "../utils/broadcastRoomUpdate";
 import sendServerMessage from "../utils/sendServerMessage";
 
 export default function handleStartGame(
 	player: Player,
 	roomManager: RoomManager,
+	sockets: Map<string, WebSocket>,
 ) {
-	//verifie si le joueur est bien dans la room
+	const socket = sockets.get(player.id);
+	if (!socket) return;
+
 	if (!player.roomId) {
-		return sendServerMessage(player.socket, {
+		return sendServerMessage(socket, {
 			type: "ERROR",
 			payload: { message: "Not in a room" },
 		});
@@ -17,25 +22,13 @@ export default function handleStartGame(
 	const room = roomManager.getRoom(player.roomId);
 
 	if (!room) {
-		return sendServerMessage(player.socket, {
+		return sendServerMessage(socket, {
 			type: "ERROR",
 			payload: { message: "Room not found" },
 		});
 	}
 
-	try {
-		room.startGame(player);
-	} catch (error) {
-		if (error instanceof Error) {
-			return sendServerMessage(player.socket, {
-				type: "ERROR",
-				payload: { message: error.message },
-			});
-		}
+	room.startGame(player);
 
-		return sendServerMessage(player.socket, {
-			type: "ERROR",
-			payload: { message: "Unexpected error" },
-		});
-	}
+	broadcastRoomUpdate(room, sockets);
 }

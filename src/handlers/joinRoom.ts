@@ -1,6 +1,8 @@
+import type { WebSocket } from "ws";
 import type { Player } from "../domain/player";
-import type { RoomManager } from "../roomManager";
+import type { RoomManager } from "../domain/roomManager";
 import type { ClientMessage } from "../types";
+import broadcastRoomUpdate from "../utils/broadcastRoomUpdate";
 import sendServerMessage from "../utils/sendServerMessage";
 
 type JoinRoomMessage = Extract<ClientMessage, { type: "JOIN_ROOM" }>;
@@ -9,41 +11,30 @@ export default function handleJoinRoom(
 	message: JoinRoomMessage,
 	player: Player,
 	roomManager: RoomManager,
+	sockets: Map<string, WebSocket>,
 ) {
-	//vérifie que le joueuer n'est pas deja dans une room
+	const socket = sockets.get(player.id);
+	if (!socket) return;
+
 	if (player.roomId) {
-		return sendServerMessage(player.socket, {
+		return sendServerMessage(socket, {
 			type: "ERROR",
 			payload: { message: "Already in a room" },
 		});
 	}
 
-	//vérifie que la room existe
 	const room = roomManager.getRoom(message.payload.roomId);
 
 	if (!room) {
-		return sendServerMessage(player.socket, {
+		return sendServerMessage(socket, {
 			type: "ERROR",
 			payload: { message: "Room does not exist" },
 		});
 	}
 
-	//mettre a jour le username
 	player.username = message.payload.username;
 
-	try {
-		room.addPlayer(player);
-	} catch (error) {
-		if (error instanceof Error) {
-			return sendServerMessage(player.socket, {
-				type: "ERROR",
-				payload: { message: error.message },
-			});
-		}
+	room.addPlayer(player);
 
-		return sendServerMessage(player.socket, {
-			type: "ERROR",
-			payload: { message: "Unexpected error" },
-		});
-	}
+	broadcastRoomUpdate(room, sockets);
 }

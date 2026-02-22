@@ -1,4 +1,4 @@
-import { Room } from "./domain/room";
+import { Room } from "./room";
 
 export class RoomManager {
 	private rooms = new Map<string, Room>();
@@ -17,7 +17,7 @@ export class RoomManager {
 	}
 
 	removeRoomIfEmpty(room: Room) {
-		if (room.players.size === 0) {
+		if (room.isEmpty()) {
 			this.rooms.delete(room.id);
 		}
 	}

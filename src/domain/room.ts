@@ -1,9 +1,8 @@
-import WebSocket from "ws";
-import type { RoomState, ServerMessage } from "../types";
+import type { RoomState } from "../types";
 import type { Player } from "./player";
 
 export class Room {
-	public players = new Map<string, Player>();
+	private players = new Map<string, Player>();
 	private state: RoomState = "WAITING";
 	private hostId: string | null = null;
 
@@ -24,20 +23,18 @@ export class Room {
 
 		this.players.set(player.id, player);
 		player.roomId = this.id;
-
-		this.notifyRoomUpdate();
 	}
 
 	removePlayer(player: Player) {
-		if (!this.players.has(player.id))
-			return console.log(`Player ${player.username} deleted`);
+		if (!this.players.has(player.id)) return;
 
 		this.players.delete(player.id);
 		player.roomId = null;
 
-		// attention futur bug si l'hote quitte la partie ça bloque toute la suite
-
-		this.notifyRoomUpdate();
+		if (this.hostId === player.id) {
+			const next = this.players.values().next().value;
+			this.hostId = next ? next.id : null;
+		}
 	}
 
 	startGame(player: Player) {
@@ -56,8 +53,6 @@ export class Room {
 		}
 
 		this.state = "PLAYING";
-
-		this.notifyRoomUpdate();
 	}
 
 	getPlayersDTO() {
@@ -67,28 +62,19 @@ export class Room {
 		}));
 	}
 
-	broadcast(message: ServerMessage) {
-		const data = JSON.stringify(message);
-
-		for (const player of this.players.values()) {
-			if (player.socket.readyState === WebSocket.OPEN) {
-				console.log(`Sending message ${player.username}: ${data}`);
-				player.socket.send(data);
-			}
-		}
+	getState() {
+		return this.state;
 	}
 
-	private notifyRoomUpdate() {
-		this.broadcast({
-			type: "ROOM_UPDATE",
-			payload: {
-				roomId: this.id,
-				hostId: this.hostId,
-				players: this.getPlayersDTO(),
-				game: {
-					state: this.state,
-				},
-			},
-		});
+	getHostId() {
+		return this.hostId;
+	}
+
+	getPlayers() {
+		return this.players.values();
+	}
+
+	isEmpty() {
+		return this.players.size === 0;
 	}
 }
