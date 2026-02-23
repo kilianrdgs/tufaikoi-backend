@@ -1,15 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { playersTestList } from "../../types";
 import { Game } from "../game";
-
-const playersList = [
-	{ id: "player1", username: "User1" },
-	{ id: "player2", username: "User2" },
-];
 
 describe("Game", () => {
 	describe("Initialization", () => {
 		it("Should initialize with correct default values", () => {
-			const game = new Game("1234", playersList, "question");
+			const game = new Game("1234", playersTestList, "question");
 
 			const dto = game.getDTO();
 
@@ -23,7 +19,7 @@ describe("Game", () => {
 	});
 	describe("nextPhase", () => {
 		it("Should transition from ANSWERING to VOTING", () => {
-			const game = new Game("1234", playersList, "question");
+			const game = new Game("1234", playersTestList, "question");
 
 			game.nextPhase();
 			const dto = game.getDTO();
@@ -33,7 +29,7 @@ describe("Game", () => {
 		});
 
 		it("Should transition from VOTING to RESULTS", () => {
-			const game = new Game("1234", playersList, "question");
+			const game = new Game("1234", playersTestList, "question");
 
 			game.nextPhase(); // ANSWERING to VOTING
 			game.nextPhase(); // VOTING to RESULTS
@@ -42,7 +38,7 @@ describe("Game", () => {
 		});
 
 		it("Should transition from RESULTS ROUND 1 to ANSWERING ROUND 2", () => {
-			const game = new Game("1234", playersList, "question");
+			const game = new Game("1234", playersTestList, "question");
 
 			game.nextPhase(); // ANSWERING to VOTING
 			game.nextPhase(); // VOTING to RESULTS
@@ -83,7 +79,7 @@ describe("Game", () => {
 		});
 
 		it("Throw if nextPhase is called after game is finished", () => {
-			const game = new Game("1234", playersList, "question");
+			const game = new Game("1234", playersTestList, "question");
 
 			for (let i = 0; i < 9; i++) {
 				game.nextPhase();
@@ -95,7 +91,7 @@ describe("Game", () => {
 
 	describe("submitAnswer", () => {
 		it("Should store a player's answer", () => {
-			const game = new Game("1234", playersList, "question");
+			const game = new Game("1234", playersTestList, "question");
 
 			game.submitAnswer("player1", "ma réponse");
 
@@ -103,7 +99,7 @@ describe("Game", () => {
 		});
 
 		it("Throw if not in ANSWERING phase", () => {
-			const game = new Game("1234", playersList, "question");
+			const game = new Game("1234", playersTestList, "question");
 
 			game.nextPhase(); // ANSWERING to VOTING
 
@@ -113,7 +109,7 @@ describe("Game", () => {
 		});
 
 		it("Throw if player already submitted", () => {
-			const game = new Game("1234", playersList, "question");
+			const game = new Game("1234", playersTestList, "question");
 			game.submitAnswer("player1", "ma réponse");
 
 			expect(() => game.submitAnswer("player1", "ma réponse")).toThrow(
@@ -122,7 +118,7 @@ describe("Game", () => {
 		});
 
 		it("Should clear answers when moving to next round", () => {
-			const game = new Game("1234", playersList, "question");
+			const game = new Game("1234", playersTestList, "question");
 			game.submitAnswer("player1", "ma réponse");
 
 			game.nextPhase(); // ANSWERING to VOTING
@@ -135,7 +131,7 @@ describe("Game", () => {
 
 	describe("submitVote", () => {
 		it("Should store a player's vote", () => {
-			const game = new Game("1234", playersList, "question");
+			const game = new Game("1234", playersTestList, "question");
 			game.submitAnswer("player1", "ma réponse");
 
 			game.nextPhase(); // ANSWERING to VOTING
@@ -146,7 +142,7 @@ describe("Game", () => {
 		});
 
 		it("Throw if not in VOTING phase", () => {
-			const game = new Game("1234", playersList, "question");
+			const game = new Game("1234", playersTestList, "question");
 			game.submitAnswer("player1", "ma réponse");
 
 			expect(() => game.submitVote("player2", 0)).toThrow(
@@ -155,7 +151,7 @@ describe("Game", () => {
 		});
 
 		it("Throw if invalid answer index", () => {
-			const game = new Game("1234", playersList, "question");
+			const game = new Game("1234", playersTestList, "question");
 			game.submitAnswer("player1", "ma réponse");
 
 			game.nextPhase(); // ANSWERING to VOTING
@@ -166,7 +162,7 @@ describe("Game", () => {
 		});
 
 		it("Throw if player already voted", () => {
-			const game = new Game("1234", playersList, "question");
+			const game = new Game("1234", playersTestList, "question");
 			game.submitAnswer("player1", "ma réponse");
 
 			game.nextPhase(); // ANSWERING to VOTING
@@ -178,7 +174,7 @@ describe("Game", () => {
 		});
 
 		it("Should clear votes when moving to next round", () => {
-			const game = new Game("1234", playersList, "question");
+			const game = new Game("1234", playersTestList, "question");
 			game.submitAnswer("player1", "ma réponse");
 
 			game.nextPhase(); // ANSWERING to VOTING
@@ -194,7 +190,7 @@ describe("Game", () => {
 
 	describe("getDTO results", () => {
 		it("Results should be null in ANSWERING and VOTING phases", () => {
-			const game = new Game("1234", playersList, "question");
+			const game = new Game("1234", playersTestList, "question");
 			expect(game.getDTO().results).toBeNull();
 
 			game.nextPhase(); // ANSWERING to VOTING
@@ -203,7 +199,7 @@ describe("Game", () => {
 		});
 
 		it("Results should contain correct data in RESULTS phase", () => {
-			const game = new Game("1234", playersList, "question");
+			const game = new Game("1234", playersTestList, "question");
 
 			game.submitAnswer("player1", "reponse1");
 			game.submitAnswer("player2", "reponse2");
@@ -232,7 +228,7 @@ describe("Game", () => {
 			});
 		});
 		it("Results should be null after moving to next round", () => {
-			const game = new Game("1234", playersList, "question");
+			const game = new Game("1234", playersTestList, "question");
 
 			game.submitAnswer("player1", "reponse1");
 			game.submitAnswer("player2", "reponse2");

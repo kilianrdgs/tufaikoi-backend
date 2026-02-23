@@ -7,9 +7,14 @@ export type ClientMessage =
 	// message in game
 	| { type: "NEXT_PHASE" }
 	| { type: "SUBMIT_ANSWER"; payload: { answer: string } }
-	| { type: "SUBMIT_VOTE"; payload: { answerIndex: number } };
+	| { type: "SUBMIT_VOTE"; payload: { answerIndex: number } }
+	| { type: "RECONNECT"; payload: { playerId: string } };
 
 export type ServerMessage =
+	| {
+			type: "CONNECTED";
+			payload: { playerId: string };
+	  }
 	| {
 			type: "ROOM_UPDATE";
 			payload: {
@@ -46,3 +51,8 @@ export type RoundResult = {
 	votes: number;
 	isWinner: boolean;
 };
+
+export const playersTestList = [
+	{ id: "player1", username: "User1" },
+	{ id: "player2", username: "User2" },
+];
