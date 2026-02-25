@@ -16,6 +16,12 @@ export default function startGracePeriod(
 	const roomId = player.roomId;
 	if (!roomId) return;
 
+	const room = roomManager.getRoom(roomId);
+	if (room) {
+		const game = gameManager.getGame(room.id);
+		broadcastRoomUpdate(room, sockets, game);
+	}
+
 	const timeout = setTimeout(() => {
 		disconnectedPlayers.delete(player.id);
 		const room = roomManager.getRoom(roomId);
