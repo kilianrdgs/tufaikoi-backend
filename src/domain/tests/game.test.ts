@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { playersTestList } from "../../types";
 import { Game } from "../game";
 
@@ -185,6 +185,100 @@ describe("Game", () => {
 			game.nextPhase(); // RESULTS ROUND 1 to ANSWERING ROUND 2
 
 			expect(game.getVotes().size).toBe(0);
+		});
+	});
+
+	describe("Timer", () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it("Should have endTime in DTO on initialization", () => {
+			const now = Date.now();
+			const game = new Game("1234", playersTestList, "question");
+
+			const dto = game.getDTO();
+
+			expect(dto.endTime).toBeGreaterThanOrEqual(now + 60_000);
+		});
+
+		it("Should reset endTime when phase changes", () => {
+			const game = new Game("1234", playersTestList, "question");
+
+			const firstEndTime = game.getDTO().endTime;
+
+			if (!firstEndTime) return;
+
+			vi.advanceTimersByTime(10_000);
+			game.nextPhase(); // ANSWERING to VOTING
+
+			const secondEndTime = game.getDTO().endTime;
+
+			expect(secondEndTime).toBeGreaterThan(firstEndTime);
+		});
+
+		it("Should auto-advance phase when timer expires", () => {
+			const game = new Game("1234", playersTestList, "question");
+
+			expect(game.getDTO().phase).toBe("ANSWERING");
+
+			vi.advanceTimersByTime(60_000);
+
+			expect(game.getDTO().phase).toBe("VOTING");
+		});
+
+		it("Should call onPhaseChange callback when timer expires", () => {
+			const callback = vi.fn();
+			const _game = new Game("1234", playersTestList, "question", callback);
+
+			vi.advanceTimersByTime(60_000);
+
+			expect(callback).toHaveBeenCalledOnce();
+		});
+
+		it("Should auto-advance through multiple phases", () => {
+			const callback = vi.fn();
+			const game = new Game("1234", playersTestList, "question", callback);
+
+			vi.advanceTimersByTime(60_000); // ANSWERING -> VOTING
+			vi.advanceTimersByTime(60_000); // VOTING -> RESULTS
+			vi.advanceTimersByTime(60_000); // RESULTS -> ANSWERING round 2
+
+			expect(game.getDTO().phase).toBe("ANSWERING");
+			expect(game.getDTO().currentRound).toBe(2);
+			expect(callback).toHaveBeenCalledTimes(3);
+		});
+
+		it("Should have endTime null when game is finished", () => {
+			const game = new Game("1234", playersTestList, "question");
+
+			// 3 rounds × 3 phases = 9 transitions
+			for (let i = 0; i < 9; i++) {
+				vi.advanceTimersByTime(60_000);
+			}
+
+			expect(game.getState()).toBe("FINISHED");
+			expect(game.getDTO().endTime).toBeNull();
+		});
+
+		it("Should not advance phase after game is finished", () => {
+			const callback = vi.fn();
+			const game = new Game("1234", playersTestList, "question", callback);
+
+			// Finish the game
+			for (let i = 0; i < 9; i++) {
+				vi.advanceTimersByTime(60_000);
+			}
+
+			callback.mockClear();
+			vi.advanceTimersByTime(60_000); // should do nothing
+
+			expect(game.getState()).toBe("FINISHED");
+			expect(callback).not.toHaveBeenCalled();
 		});
 	});
 

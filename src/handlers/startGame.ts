@@ -45,7 +45,9 @@ export default function handleStartGame(
 		username: p.username,
 	}));
 
-	const game = gameManager.createGame(room.id, players, questions[0]);
+	const game = gameManager.createGame(room.id, players, questions[0], () => {
+		broadcastRoomUpdate(room, sockets, game);
+	});
 
 	broadcastRoomUpdate(room, sockets, game);
 }

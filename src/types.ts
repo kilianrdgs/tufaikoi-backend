@@ -43,6 +43,7 @@ export type GameDTO = {
 	question: string | null;
 	answers: string[] | null;
 	results: RoundResult[] | null;
+	endTime: number | null;
 };
 
 export type RoundResult = {

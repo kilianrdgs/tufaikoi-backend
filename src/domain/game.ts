@@ -1,4 +1,7 @@
 import type { GamePhase, GameState, RoundResult } from "../types";
+import { PhaseTimer } from "./phaseTimer";
+
+const DURATION_TIMER = 60_000;
 
 export class Game {
 	private currentRound = 1;
@@ -8,13 +11,28 @@ export class Game {
 	private currentQuestion: string;
 	private answers = new Map<string, string>();
 	private votes = new Map<string, number>();
+	private phaseTimer: PhaseTimer;
+	private onPhaseChange?: () => void;
 
 	constructor(
 		readonly roomId: string,
 		readonly players: { id: string; username: string }[],
 		question: string,
+		onPhaseChange?: () => void,
 	) {
 		this.currentQuestion = question;
+		this.onPhaseChange = onPhaseChange;
+		this.phaseTimer = new PhaseTimer(DURATION_TIMER, () =>
+			this.handleTimerExpired(),
+		);
+		this.phaseTimer.start();
+	}
+
+	private handleTimerExpired() {
+		if (this.state === "FINISHED") return;
+
+		this.nextPhase();
+		this.onPhaseChange?.();
 	}
 
 	nextPhase() {
@@ -24,11 +42,13 @@ export class Game {
 
 		if (this.phase === "ANSWERING") {
 			this.phase = "VOTING";
+			this.phaseTimer.start();
 			return;
 		}
 
 		if (this.phase === "VOTING") {
 			this.phase = "RESULTS";
+			this.phaseTimer.start();
 			return;
 		}
 
@@ -38,10 +58,12 @@ export class Game {
 
 			if (this.currentRound >= this.maxRounds) {
 				this.state = "FINISHED";
+				this.phaseTimer.clear();
 				return;
 			}
 			this.currentRound++;
 			this.phase = "ANSWERING";
+			this.phaseTimer.start();
 			return;
 		}
 	}
@@ -119,6 +141,7 @@ export class Game {
 			question: this.currentQuestion,
 			answers: this.phase === "VOTING" ? [...this.answers.values()] : null,
 			results,
+			endTime: this.phaseTimer.endTime,
 		};
 	}
 }

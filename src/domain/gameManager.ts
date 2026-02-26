@@ -7,12 +7,13 @@ export class GameManager {
 		roomId: string,
 		players: { id: string; username: string }[],
 		question: string,
+		onPhaseChange?: () => void,
 	): Game {
 		if (this.games.has(roomId)) {
 			throw new Error("Game already exists for this room");
 		}
 
-		const game = new Game(roomId, players, question);
+		const game = new Game(roomId, players, question, onPhaseChange);
 		this.games.set(roomId, game);
 		return game;
 	}
