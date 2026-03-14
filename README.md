@@ -1,11 +1,12 @@
 # tufaikoi-backend
 
-Backend temps réel pour **Tu Fais Koi**, un jeu social multijoueur par navigateur. Les joueurs rejoignent une room, reçoivent une question de mise en situation, proposent leur réponse, puis votent pour la meilleure. Le tout fonctionne via WebSocket.
+Backend temps réel pour **TufaiKoi**, un jeu social multijoueur par navigateur. Les joueurs rejoignent une room, reçoivent des scénarios absurdes générés par IA, proposent leur réponse, puis votent pour la meilleure. Chaque choix influence le scénario suivant. Le tout fonctionne via WebSocket.
 
 ## Contexte du projet
 
-- Jeu de société en ligne où les joueurs répondent à des questions de mise en situation absurdes/drôles
+- Jeu de société en ligne où les joueurs répondent à des mises en situation absurdes/drôles
 - Conçu pour être joué entre amis sur téléphone ou navigateur
+- Les scénarios sont générés dynamiquement par **Claude Sonnet 4.6** (via AWS Bedrock)
 - Ce repository contient uniquement le serveur backend (API WebSocket)
 
 ## Fonctionnalités principales
@@ -13,40 +14,15 @@ Backend temps réel pour **Tu Fais Koi**, un jeu social multijoueur par navigate
 - Création et gestion de rooms avec code à 4 chiffres
 - Système d'hôte : le premier joueur qui crée la room devient hôte
 - Transfert automatique du rôle d'hôte si celui-ci quitte
-- Partie en 3 rounds avec 3 phases par round : réponse, vote, résultats
+- Partie en 3 rounds narratifs avec 3 phases par round : réponse, vote, résultats
+- **Scénarios IA** : chaque round génère un scénario basé sur le choix des joueurs au round précédent
+- Conclusion IA en fin de partie (épilogue qui boucle l'histoire)
 - Timer automatique de 60 secondes par phase avec transition automatique
 - Soumission de réponses et votes avec validation
 - Calcul des résultats (votes par réponse, détection du gagnant)
 - Reconnexion des joueurs déconnectés avec grace period de 30 secondes
 - Heartbeat pour détecter les connexions mortes (ping/pong toutes les 10s)
 - Broadcast de l'état complet de la room à tous les joueurs après chaque action
-
-## Architecture du projet
-
-Architecture en couches avec séparation nette entre le domaine métier et la couche de communication WebSocket.
-
-```
-Client (WebSocket)
-    |
-    v
-index.ts (serveur HTTP + WebSocket)
-    |
-    v
-messageHandler.ts (routeur de messages)
-    |
-    v
-handlers/ (logique de traitement par action)
-    |
-    v
-domain/ (modèles métier : Game, Room, Player, RoomManager, GameManager)
-    |
-    v
-utils/ (broadcast, reconnexion, heartbeat, questions)
-```
-
-- **Pas de base de données** : tout est stocké en mémoire (Maps)
-- **Pas de REST API** : toute la communication passe par WebSocket (sauf un endpoint GET `/` de health check)
-- **Pattern message-based** : le client envoie un message JSON typé, le serveur route vers le bon handler
 
 ## Stack technique
 
@@ -55,11 +31,12 @@ utils/ (broadcast, reconnexion, heartbeat, questions)
 | Langage          | TypeScript (ES2022, strict mode)             |
 | Runtime          | Node.js                                      |
 | Framework        | Express 5 (HTTP) + ws (WebSocket)            |
+| IA               | Claude Sonnet 4.6 via AWS Bedrock            |
 | Linter/Formatter | Biome (règles recommandées, indentation tab) |
 | Tests            | Vitest                                       |
 | Dev server       | ts-node-dev (hot reload)                     |
+| CI/CD            | GitHub Actions (lint + tests)                |
 | Base de données  | Aucune (stockage in-memory)                  |
-| CI/CD            | Non configuré                                |
 
 ## Installation
 
@@ -67,6 +44,7 @@ utils/ (broadcast, reconnexion, heartbeat, questions)
 
 - Node.js (version compatible ES2022)
 - npm
+- Un compte AWS avec accès à Bedrock (Claude Sonnet 4.6)
 
 ### Installation
 
@@ -78,7 +56,14 @@ npm install
 
 ### Configuration
 
-Le serveur utilise la variable d'environnement `PORT` (défaut : `3000`). Un fichier `.env` est attendu à la racine (ignoré par git).
+Créer un fichier `.env` à la racine (voir `.env.example`) :
+
+```
+PORT=3000
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+AWS_REGION=eu-west-3
+```
 
 ### Lancement
 
@@ -86,8 +71,14 @@ Le serveur utilise la variable d'environnement `PORT` (défaut : `3000`). Un fic
 # Mode développement (hot reload)
 npm run dev
 
-# Linter + formatter
+# Linter + formatter (corrige automatiquement)
 npm run lint
+
+# Lint en mode vérification (CI)
+npm run lint:ci
+
+# Tests
+npm test
 ```
 
 ## Structure du repository
@@ -99,7 +90,7 @@ src/
 ├── types.ts                    # Types partagés (ClientMessage, ServerMessage, GameDTO...)
 │
 ├── domain/                     # Modèles métier
-│   ├── game.ts                 # Logique d'une partie (rounds, phases, réponses, votes)
+│   ├── game.ts                 # Logique d'une partie (rounds, phases, réponses, votes, IA)
 │   ├── gameManager.ts          # Registre des parties actives (Map roomId -> Game)
 │   ├── room.ts                 # Logique d'une room (joueurs, hôte, états)
 │   ├── roomManager.ts          # Registre des rooms actives (Map roomId -> Room)
@@ -122,7 +113,11 @@ src/
     ├── broadcastRoomUpdate.ts   # Envoie l'état de la room à tous les joueurs
     ├── sendServerMessage.ts     # Envoie un message à un seul joueur
     ├── generateRoomCode.ts      # Génère un code de room à 4 chiffres
-    ├── questions.ts             # Liste statique des questions
+    ├── sanitize.ts              # Sanitisation des entrées pour les prompts IA
+    ├── questions.ts             # Scénarios de départ (round 1)
+    ├── ai/
+    │   ├── ai.ts                # Client AWS Bedrock, appel à Claude Sonnet 4.6
+    │   └── prompts.ts           # Construction des prompts par round + conclusion
     └── reconnection/
         ├── gracePeriod.ts       # Grace period avant suppression d'un joueur déconnecté
         ├── heartbeat.ts         # Ping/pong pour détecter les connexions mortes
@@ -137,11 +132,24 @@ src/
 1. Un joueur crée une room (`CREATE_ROOM`) et devient hôte
 2. D'autres joueurs rejoignent via le code à 4 chiffres (`JOIN_ROOM`)
 3. L'hôte lance la partie (`START_GAME`) — minimum 2 joueurs requis
-4. La partie se déroule en **3 rounds**, chacun avec 3 phases :
-   - **ANSWERING** (60s) : les joueurs soumettent leur réponse à la question
-   - **VOTING** (60s) : les joueurs votent pour une réponse (par index)
-   - **RESULTS** (60s) : affichage des résultats (votes par réponse, gagnant)
-5. Après le 3ème round, l'état passe à `FINISHED`
+4. La partie se déroule en **3 rounds narratifs**, chacun avec 3 phases :
+   - **ANSWERING** (60s) : le scénario + question sont affichés, les joueurs soumettent leur réponse
+   - **VOTING** (60s) : les joueurs votent pour une réponse (par index, anonyme)
+   - **RESULTS** (60s) : résultats affichés + le serveur génère le prochain scénario via l'IA
+5. Après le 3ème round, l'IA génère un **épilogue** qui conclut l'histoire, puis l'état passe à `FINISHED`
+
+### Génération IA des scénarios
+
+Les scénarios forment une **histoire continue** sur les 3 rounds :
+
+| Round | Type     | Description                                                  |
+| ----- | -------- | ------------------------------------------------------------ |
+| 1     | HOOK     | Scénario de départ (pioché depuis une liste statique)        |
+| 2     | ESCALADE | Généré par l'IA à partir du scénario 1 + la réponse gagnante |
+| 3     | TWIST    | Généré par l'IA à partir de toute l'histoire (rounds 1 et 2) |
+| Fin   | ÉPILOGUE | Généré par l'IA — chute finale qui boucle l'histoire         |
+
+L'IA est appelée pendant la phase RESULTS (en parallèle de l'affichage), donc le joueur ne subit aucune latence.
 
 ### Flux de données
 
@@ -158,53 +166,7 @@ src/
 - Pendant ce délai, le joueur peut se reconnecter via `RECONNECT` avec son `playerId`
 - Passé le délai, le joueur est retiré de la room (et la room est supprimée si vide)
 
-### Gestion des erreurs
-
-- Les messages JSON invalides retournent une erreur `Invalid JSON`
-- Les erreurs métier (ex: voter hors de la phase de vote) sont attrapées et renvoyées au client sous forme de `ServerMessage` de type `ERROR`
-- Les erreurs inattendues dans les handlers sont loguées côté serveur et renvoyées génériquement au client
-
-## Protocole WebSocket
-
-### Messages client → serveur
-
-| Type            | Payload                                | Description                        |
-| --------------- | -------------------------------------- | ---------------------------------- |
-| `CREATE_ROOM`   | `{ username: string }`                 | Créer une room                     |
-| `JOIN_ROOM`     | `{ roomId: string, username: string }` | Rejoindre une room                 |
-| `LEAVE_ROOM`    | —                                      | Quitter la room                    |
-| `START_GAME`    | —                                      | Lancer la partie (hôte uniquement) |
-| `NEXT_PHASE`    | —                                      | Phase suivante (hôte uniquement)   |
-| `SUBMIT_ANSWER` | `{ answer: string }`                   | Soumettre une réponse              |
-| `SUBMIT_VOTE`   | `{ answerIndex: number }`              | Voter pour une réponse             |
-| `RECONNECT`     | `{ playerId: string }`                 | Se reconnecter                     |
-
-### Messages serveur → client
-
-| Type          | Payload                                                   | Description               |
-| ------------- | --------------------------------------------------------- | ------------------------- |
-| `CONNECTED`   | `{ playerId: string }`                                    | Confirmation de connexion |
-| `ROOM_UPDATE` | `{ roomId, hostId, players, state, game: GameDTO\|null }` | État complet de la room   |
-| `ERROR`       | `{ message: string }`                                     | Erreur                    |
-
-### Structure de GameDTO
-
-```typescript
-{
-  state: "PLAYING" | "FINISHED"
-  phase: "ANSWERING" | "VOTING" | "RESULTS"
-  currentRound: number        // 1 à 3
-  maxRounds: number           // 3
-  question: string | null
-  answers: string[] | null    // visible uniquement en phase VOTING
-  results: RoundResult[] | null  // visible uniquement en phase RESULTS
-  endTime: number | null      // timestamp de fin du timer courant
-}
-```
-
 ## Tests
-
-Les tests unitaires couvrent la couche domaine et les utilitaires de reconnexion.
 
 ```bash
 npm test
@@ -218,21 +180,6 @@ npm test
 - `src/domain/tests/gameManager.test.ts` — registre des parties
 - `src/utils/reconnection/tests/reconnectPlayer.test.ts` — reconnexion
 - `src/utils/reconnection/tests/gracePeriod.test.ts` — grace period
-
-**Framework :** Vitest
-
-## Améliorations possibles
-
-- **Persistence** : remplacer le stockage in-memory par une base de données (Redis, PostgreSQL) pour supporter le redémarrage du serveur
-- **Rotation des questions** : actuellement seule `questions[0]` est utilisée à chaque partie — implémenter une sélection aléatoire ou séquentielle parmi les 6 questions disponibles
-- **Questions dynamiques** : charger les questions depuis une source externe ou permettre aux joueurs d'en proposer
-- **Scalabilité** : ajouter un système de pub/sub (Redis) pour supporter plusieurs instances du serveur
-- **Authentification** : ajouter un système d'identification des joueurs (tokens, sessions)
-- **Validation des entrées** : valider les payloads des messages (longueur du username, contenu des réponses) avec un schéma (Zod, etc.)
-- **CI/CD** : mettre en place une pipeline d'intégration continue (GitHub Actions)
-- **Déploiement** : ajouter un Dockerfile et une configuration de production
-- **Score global** : maintenir un score cumulé sur l'ensemble des rounds d'une partie
-- **Gestion de la room post-partie** : permettre de relancer une partie sans recréer de room
 
 ## Auteur
 
