@@ -3,7 +3,7 @@ import type { GameManager } from "../domain/gameManager";
 import type { Player } from "../domain/player";
 import type { RoomManager } from "../domain/roomManager";
 import broadcastRoomUpdate from "../utils/broadcastRoomUpdate";
-import { questions } from "../utils/questions";
+import { getRandomStarterScenario } from "../utils/questions";
 import sendServerMessage from "../utils/sendServerMessage";
 
 export default function handleStartGame(
@@ -45,9 +45,14 @@ export default function handleStartGame(
 		username: p.username,
 	}));
 
-	const game = gameManager.createGame(room.id, players, questions[0], () => {
-		broadcastRoomUpdate(room, sockets, game);
-	});
+	const game = gameManager.createGame(
+		room.id,
+		players,
+		getRandomStarterScenario(),
+		() => {
+			broadcastRoomUpdate(room, sockets, game);
+		},
+	);
 
 	broadcastRoomUpdate(room, sockets, game);
 }

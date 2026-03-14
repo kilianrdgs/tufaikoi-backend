@@ -7,12 +7,15 @@
 		"test": "vitest",
 		"dev": "ts-node-dev --respawn --transpile-only src/index.ts",
 		"start": "",
-		"lint": "biome format . --write && biome check . --write"
+		"lint": "biome format . --write && biome check . --write",
+		"lint:ci": "biome check ."
 	},
 	"keywords": [],
 	"author": "",
 	"license": "ISC",
 	"dependencies": {
+		"@aws-sdk/client-bedrock-runtime": "^3.1009.0",
+		"dotenv": "^17.3.1",
 		"express": "^5.2.1",
 		"ws": "^8.19.0"
 	},

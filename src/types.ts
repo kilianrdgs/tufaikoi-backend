@@ -40,7 +40,8 @@ export type GameDTO = {
 	phase: GamePhase;
 	currentRound: number;
 	maxRounds: number;
-	question: string | null;
+	scenario: string;
+	question: string;
 	answers: string[] | null;
 	results: RoundResult[] | null;
 	endTime: number | null;

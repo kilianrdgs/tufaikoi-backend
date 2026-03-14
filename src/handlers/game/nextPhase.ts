@@ -5,7 +5,7 @@ import type { RoomManager } from "../../domain/roomManager";
 import broadcastRoomUpdate from "../../utils/broadcastRoomUpdate";
 import sendServerMessage from "../../utils/sendServerMessage";
 
-export default function handleNextPhase(
+export default async function handleNextPhase(
 	player: Player,
 	roomManager: RoomManager,
 	gameManager: GameManager,
@@ -45,7 +45,7 @@ export default function handleNextPhase(
 		});
 	}
 
-	game.nextPhase();
+	await game.nextPhase();
 
 	broadcastRoomUpdate(room, sockets, game);
 }
