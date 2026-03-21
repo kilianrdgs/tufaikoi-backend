@@ -11,34 +11,35 @@ export const SYSTEM_PROMPT = `Tu es le Maître du Jeu de "Chaos & Conséquences"
 
 OUTPUT : JSON strict, deux champs uniquement.
 {
-  "scenario": "20 mots MAX. Situation absurde, noire, trash. Emojis obligatoires.",
-  "question": "5 mots MAX. Ouverte. Ex: 'Tu leur dis quoi ?', 'Tu le caches où ?', 'Tu réagis comment ?'"
+  "scenario": "30 mots MAX. Situation qui découle DIRECTEMENT et mécaniquement du choix précédent. Ton : noir, trash, drôle, équilibré. Emojis obligatoires.",
+  "question": "5 mots MAX. Ouverte. Exemples : 'Tu leur dis quoi ?', 'Tu le caches où ?', 'Tu réagis comment ?'"
 }
 
 RÈGLES ABSOLUES :
 - Zéro texte hors JSON
+- Le choix des joueurs est LA CAUSE. Le scénario est LA CONSÉQUENCE DIRECTE. Pas de sauts logiques.
 - Jamais de questions oui/non
 - Jamais "tu fais quoi" ou "que fais-tu"
 - Aucun jugement, aucune morale
-- Ton : absurde, noir, trash, drôle`;
+- L'absurde doit rester ancré dans une logique interne cohérente : les événements délirants ont des causes réelles`;
 
-const ROUND_CONFIG: Record<RoundNumber, { name: string; instruction: string }> =
-	{
-		1: {
-			name: "HOOK",
-			instruction: "Situation gênante du quotidien qui accroche immédiatement.",
-		},
-		2: {
-			name: "ESCALADE",
-			instruction:
-				"Tout part en vrille à cause du choix précédent. Logique absurde mais cohérente.",
-		},
-		3: {
-			name: "TWIST",
-			instruction:
-				"Plot twist brutal. S'appuie sur toute l'histoire. Chute inattendue mais logique.",
-		},
-	};
+// const ROUND_CONFIG: Record<RoundNumber, { name: string; instruction: string }> =
+// 	{
+// 		1: {
+// 			name: "HOOK",
+// 			instruction: "Situation gênante du quotidien qui accroche immédiatement.",
+// 		},
+// 		2: {
+// 			name: "ESCALADE",
+// 			instruction:
+// 				"Tout part en vrille à cause du choix précédent. Logique absurde mais cohérente.",
+// 		},
+// 		3: {
+// 			name: "TWIST",
+// 			instruction:
+// 				"Plot twist brutal. S'appuie sur toute l'histoire. Chute inattendue mais logique.",
+// 		},
+// 	};
 
 export function buildRound2Prompt(
 	round1Scenario: string,
@@ -46,15 +47,20 @@ export function buildRound2Prompt(
 ): string {
 	const s = sanitizeForPrompt(round1Scenario);
 	const c = sanitizeForPrompt(round1WinningAnswer);
-
 	return `round=2 type=ESCALADE
-${ROUND_CONFIG[2].instruction}
+
+RÈGLE PRINCIPALE : Le scénario doit OUVRIR sur le choix gagnant. Pas de transition, pas d'ellipse — on est dans la continuité immédiate.
+
+STRUCTURE ATTENDUE :
+1. Le choix "${c}" a une conséquence concrète et directe (visible, physique, sociale)
+2. Cette conséquence déclenche une situation pire / plus embarrassante / plus délirante
+3. La question porte sur ce nouveau problème, pas sur l'ancien
 
 HISTOIRE :
-- Début : ${s}
-- Choix des joueurs (OBLIGATOIRE comme déclencheur) : "${c}"
+- Situation de départ : ${s}
+- Choix des joueurs : "${c}"
 
-Le scénario DOIT partir directement de ce choix. Les joueurs doivent sentir que leur vote a tout causé.`;
+INTERDIT : Commencer le scénario sans mentionner ou impliquer directement "${c}".`;
 }
 
 export function buildRound3Prompt(history: GameHistory): string {
@@ -63,20 +69,25 @@ export function buildRound3Prompt(history: GameHistory): string {
 			"buildRound3Prompt: historique incomplet (round1 ou round2 manquant)",
 		);
 	}
-
 	const s1 = sanitizeForPrompt(history.round1.scenario);
 	const c1 = sanitizeForPrompt(history.round1.winningAnswer);
 	const s2 = sanitizeForPrompt(history.round2.scenario);
 	const c2 = sanitizeForPrompt(history.round2.winningAnswer);
 
 	return `round=3 type=TWIST
-${ROUND_CONFIG[3].instruction}
+
+RÈGLE PRINCIPALE : Le twist doit être la conséquence logique ET inattendue de TOUTE la chaîne. Pas un rebondissement décoratif — un retournement qui rend les rounds 1 et 2 rétrospectivement absurdes.
+
+STRUCTURE ATTENDUE :
+1. Le choix "${c2}" vient de provoquer quelque chose d'irréversible
+2. Un élément du round 1 (scenario ou choix) resurface et change tout le sens de l'histoire
+3. La chute est mémorable parce qu'elle était logiquement inévitable depuis le début
 
 HISTOIRE COMPLÈTE :
 - Round 1 : ${s1} → Choix : "${c1}"
 - Round 2 : ${s2} → Choix : "${c2}"
 
-Le twist DOIT réutiliser un élément oublié des rounds précédents et faire sentir que tout était lié depuis le début.`;
+INTERDIT : Inventer un personnage ou un élément absent des rounds précédents pour provoquer le twist.`;
 }
 
 export function buildConclusionPrompt(
@@ -86,8 +97,8 @@ export function buildConclusionPrompt(
 ): string {
 	const s3 = sanitizeForPrompt(lastScenario);
 	const c3 = sanitizeForPrompt(lastWinningAnswer);
-
 	const historyLines: string[] = [];
+
 	if (history.round1) {
 		historyLines.push(
 			`- Round 1 : ${sanitizeForPrompt(
@@ -106,10 +117,16 @@ export function buildConclusionPrompt(
 
 	return `mode=conclusion type=EPILOGUE
 
+RÈGLE PRINCIPALE : L'épilogue doit répondre à UNE question — "comment tout ça finit pour le personnage ?" La chute boucle l'histoire en 2-3 phrases max. Elle doit provoquer un "ah ouais logique" ou un "non c'est pas possible".
+
+STRUCTURE ATTENDUE :
+1. Conséquence finale du choix "${c3}"
+2. Référence directe à au moins un élément du round 1 qui prend un sens ironique
+3. Chute sèche et mémorable
+
 HISTOIRE COMPLÈTE :
 ${historyLines.join("\n")}
 
-Génère l'ÉPILOGUE de cette histoire. Chute finale absurde et mémorable qui boucle toute l'histoire.
 Le champ "question" doit être "FIN." (c'est la conclusion, pas de suite).`;
 }
 
