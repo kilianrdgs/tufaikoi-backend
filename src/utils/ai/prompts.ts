@@ -3,15 +3,15 @@ import { sanitizeForPrompt } from "../sanitize";
 export type RoundNumber = 1 | 2 | 3;
 
 export interface GameHistory {
-	round1?: { scenario: string; winningAnswer: string };
-	round2?: { scenario: string; winningAnswer: string };
+  round1?: { scenario: string; winningAnswer: string };
+  round2?: { scenario: string; winningAnswer: string };
 }
 
 export const SYSTEM_PROMPT = `Tu es le Maître du Jeu de "Chaos & Conséquences".
 
 OUTPUT : JSON strict, deux champs uniquement.
 {
-  "scenario": "30 mots MAX. Situation qui découle DIRECTEMENT et mécaniquement du choix précédent. Ton : noir, trash, drôle, équilibré. Emojis obligatoires.",
+  "scenario": "Entre 35 et 50 mots MAX. Situation qui découle DIRECTEMENT et mécaniquement du choix précédent. Ton : noir, trash, drôle, équilibré. Emojis obligatoires.",
   "question": "5 mots MAX. Ouverte. Exemples : 'Tu leur dis quoi ?', 'Tu le caches où ?', 'Tu réagis comment ?'"
 }
 
@@ -42,12 +42,12 @@ RÈGLES ABSOLUES :
 // 	};
 
 export function buildRound2Prompt(
-	round1Scenario: string,
-	round1WinningAnswer: string,
+  round1Scenario: string,
+  round1WinningAnswer: string
 ): string {
-	const s = sanitizeForPrompt(round1Scenario);
-	const c = sanitizeForPrompt(round1WinningAnswer);
-	return `round=2 type=ESCALADE
+  const s = sanitizeForPrompt(round1Scenario);
+  const c = sanitizeForPrompt(round1WinningAnswer);
+  return `round=2 type=ESCALADE
 
 RÈGLE PRINCIPALE : Le scénario doit OUVRIR sur le choix gagnant. Pas de transition, pas d'ellipse — on est dans la continuité immédiate.
 
@@ -64,17 +64,17 @@ INTERDIT : Commencer le scénario sans mentionner ou impliquer directement "${c}
 }
 
 export function buildRound3Prompt(history: GameHistory): string {
-	if (!history.round1 || !history.round2) {
-		throw new Error(
-			"buildRound3Prompt: historique incomplet (round1 ou round2 manquant)",
-		);
-	}
-	const s1 = sanitizeForPrompt(history.round1.scenario);
-	const c1 = sanitizeForPrompt(history.round1.winningAnswer);
-	const s2 = sanitizeForPrompt(history.round2.scenario);
-	const c2 = sanitizeForPrompt(history.round2.winningAnswer);
+  if (!history.round1 || !history.round2) {
+    throw new Error(
+      "buildRound3Prompt: historique incomplet (round1 ou round2 manquant)"
+    );
+  }
+  const s1 = sanitizeForPrompt(history.round1.scenario);
+  const c1 = sanitizeForPrompt(history.round1.winningAnswer);
+  const s2 = sanitizeForPrompt(history.round2.scenario);
+  const c2 = sanitizeForPrompt(history.round2.winningAnswer);
 
-	return `round=3 type=TWIST
+  return `round=3 type=TWIST
 
 RÈGLE PRINCIPALE : Le twist doit être la conséquence logique ET inattendue de TOUTE la chaîne. Pas un rebondissement décoratif — un retournement qui rend les rounds 1 et 2 rétrospectivement absurdes.
 
@@ -91,31 +91,31 @@ INTERDIT : Inventer un personnage ou un élément absent des rounds précédents
 }
 
 export function buildConclusionPrompt(
-	history: GameHistory,
-	lastScenario: string,
-	lastWinningAnswer: string,
+  history: GameHistory,
+  lastScenario: string,
+  lastWinningAnswer: string
 ): string {
-	const s3 = sanitizeForPrompt(lastScenario);
-	const c3 = sanitizeForPrompt(lastWinningAnswer);
-	const historyLines: string[] = [];
+  const s3 = sanitizeForPrompt(lastScenario);
+  const c3 = sanitizeForPrompt(lastWinningAnswer);
+  const historyLines: string[] = [];
 
-	if (history.round1) {
-		historyLines.push(
-			`- Round 1 : ${sanitizeForPrompt(
-				history.round1.scenario,
-			)} → Choix : "${sanitizeForPrompt(history.round1.winningAnswer)}"`,
-		);
-	}
-	if (history.round2) {
-		historyLines.push(
-			`- Round 2 : ${sanitizeForPrompt(
-				history.round2.scenario,
-			)} → Choix : "${sanitizeForPrompt(history.round2.winningAnswer)}"`,
-		);
-	}
-	historyLines.push(`- Round 3 : ${s3} → Choix final : "${c3}"`);
+  if (history.round1) {
+    historyLines.push(
+      `- Round 1 : ${sanitizeForPrompt(
+        history.round1.scenario
+      )} → Choix : "${sanitizeForPrompt(history.round1.winningAnswer)}"`
+    );
+  }
+  if (history.round2) {
+    historyLines.push(
+      `- Round 2 : ${sanitizeForPrompt(
+        history.round2.scenario
+      )} → Choix : "${sanitizeForPrompt(history.round2.winningAnswer)}"`
+    );
+  }
+  historyLines.push(`- Round 3 : ${s3} → Choix final : "${c3}"`);
 
-	return `mode=conclusion type=EPILOGUE
+  return `mode=conclusion type=EPILOGUE
 
 RÈGLE PRINCIPALE : L'épilogue doit répondre à UNE question — "comment tout ça finit pour le personnage ?" La chute boucle l'histoire en 2-3 phrases max. Elle doit provoquer un "ah ouais logique" ou un "non c'est pas possible".
 
@@ -131,22 +131,22 @@ Le champ "question" doit être "FIN." (c'est la conclusion, pas de suite).`;
 }
 
 export function buildRoundPrompt(
-	round: RoundNumber,
-	scenario: string,
-	winningAnswer: string,
-	history?: GameHistory,
+  round: RoundNumber,
+  scenario: string,
+  winningAnswer: string,
+  history?: GameHistory
 ): string {
-	switch (round) {
-		case 2:
-			return buildRound2Prompt(scenario, winningAnswer);
-		case 3:
-			if (!history) {
-				throw new Error("buildRoundPrompt round 3: history requis");
-			}
-			return buildRound3Prompt(history);
-		default:
-			throw new Error(
-				`buildRoundPrompt: round ${round} non supporté (round 1 utilise un scénario prédéfini)`,
-			);
-	}
+  switch (round) {
+    case 2:
+      return buildRound2Prompt(scenario, winningAnswer);
+    case 3:
+      if (!history) {
+        throw new Error("buildRoundPrompt round 3: history requis");
+      }
+      return buildRound3Prompt(history);
+    default:
+      throw new Error(
+        `buildRoundPrompt: round ${round} non supporté (round 1 utilise un scénario prédéfini)`
+      );
+  }
 }
